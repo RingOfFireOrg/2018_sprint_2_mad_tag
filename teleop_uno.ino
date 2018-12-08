@@ -1,15 +1,17 @@
 #include <time.h>
 #include <Servo.h>
 #include "DS_interface.h"
-#include "Blinker.h"
 #include "HbridgeDriveTrain.h"
 
 #define RX_FROM_NMCU 2
 #define TX_TO_NMCU 3
 
-#define SERVO_PIN 5
+#define SERVO_PIN 9
+#define PHOTO_SENSOR_PIN A0
 
 #define DRIVE_SPEED 1
+#define AUTONOMOUS_DONE 15*1000
+#define COLOR_CHANGE_TRESHOLD 780
 
 // ---------------------------------------------------------------------------
 /* 
@@ -26,11 +28,13 @@ HbridgeDriveTrain drivetrain;
 /*
  * Servo for lowering and raising the arm
  */
- Servo servo;
+ Servo armServo;
 
 /* 
  * Arduino Setup where we initialize subsystems
  */
+bool inAutonomous = true;
+
 void setup() {
   Serial.begin(115200);
   Serial.println("Interfacing arduino with nodemcu");
@@ -39,7 +43,7 @@ void setup() {
   drivetrain.init();  // setup the drive train
   stopWheels();  // start with the wheels stopped
 
-  servo.attach(SERVO_PIN);
+  armServo.attach(SERVO_PIN);
 }
 
 /* 
@@ -49,6 +53,10 @@ void setup() {
 void loop() {
 
     char input = ds.readInputIfAvailable();
+
+    if (inAutonomous) {
+      runAutonomous();
+    }
     
     switch (input) {
       case 't':
@@ -86,12 +94,38 @@ void loop() {
     }
 }
 
+void runAutonomous() {
+    int photoSensor = analogRead(PHOTO_SENSOR_PIN);
+    int currentTime = millis();
+    Serial.print("Photo sensor value:");
+    Serial.println(photoSensor);
+    // Serial.print("Current Time:");
+    // Serial.println(currentTime);
+
+    if (currentTime > AUTONOMOUS_DONE) {
+      stopAutonomous();
+      return;
+    }
+
+    if (photoSensor > COLOR_CHANGE_TRESHOLD) {
+      driveForward();
+    }
+    else {
+      stopAutonomous();
+    }
+}
+
+void stopAutonomous() {
+  stopWheels();
+  inAutonomous = false;
+}
+
 void armUp() {
-  servo.write(90);
+  armServo.write(90);
 }
 
 void armDown() {
-  servo.write(0);
+  armServo.write(0);
 }
 
 void driveForward() {
@@ -103,17 +137,15 @@ void driveReverse() {
 }
 
 void turnLeft() {
-  drivetrain.setMotorsDirectly(-DRIVE_SPEED, DRIVE_SPEED);
+  drivetrain.setMotorsDirectly(0, DRIVE_SPEED);
 }
 
 void turnRight() {
-  drivetrain.setMotorsDirectly(DRIVE_SPEED, -DRIVE_SPEED);
+  drivetrain.setMotorsDirectly(DRIVE_SPEED, 0);
 }
 
 void stopWheels() {
   drivetrain.setMotorsDirectly(0, 0);
-    // current_direction = HbridgeDriveTrain::STOP;
-    // drivetrain.service(current_direction);
 }
 
 void testWheels()
