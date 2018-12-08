@@ -56,10 +56,10 @@ void HbridgeDriveTrain::init() {
  * way, then "HIGH" would mean forward for both motors and FWD could just
  * be "HIGH".
  */
-#define FWD_L HIGH
-#define FWD_R LOW
-#define REV_L LOW
-#define REV_R HIGH
+#define FWD_L LOW
+#define FWD_R HIGH
+#define REV_L HIGH
+#define REV_R LOW
 #define FULL_POWER 255
 #define NO_POWER 0
 
